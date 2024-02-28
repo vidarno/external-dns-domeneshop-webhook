@@ -5,34 +5,32 @@
 
 # Stage 1 (to create a "build" image, ~850MB)
 FROM golang:1.22.0 AS builder
-# smoke test to verify if golang is available
-RUN go version
 
-WORKDIR /app/
+WORKDIR /src/
 COPY go.mod go.sum ./
 
 RUN go mod download
 
 COPY ./ ./
 
-RUN GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
     -trimpath \
     -ldflags="-w -s" \
-    -o app
+    -o /app
+RUN ls /
+
 #Commented-out until tests are ready..
 #RUN go test -cover -v ./...
 
 # Stage 2 (to create a downsized "container executable", ~5MB)
+FROM gcr.io/distroless/base-debian11 AS build-release-stage
 
-# If you need SSL certificates for HTTPS, replace `FROM SCRATCH` with:
-#
-#   FROM alpine:3.17.1
-#   RUN apk --no-cache add ca-certificates
-#
-FROM scratch
-WORKDIR /root/
-COPY --from=builder /app .
+WORKDIR /
+COPY --from=builder /app /app
 
 EXPOSE 8888
+
+USER nonroot:nonroot
+
 ENTRYPOINT ["./app"]
