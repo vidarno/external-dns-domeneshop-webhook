@@ -5,6 +5,7 @@
 
 # Stage 1 (to create a "build" image, ~850MB)
 FROM golang:1.22.0 AS builder
+LABEL org.opencontainers.image.source="https://github.com/vidarno/externaldns-domeneshop-webhook>"
 
 WORKDIR /src/
 COPY go.mod go.sum ./
@@ -18,7 +19,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -trimpath \
     -ldflags="-w -s" \
     -o /app
-RUN ls /
 
 #Commented-out until tests are ready..
 #RUN go test -cover -v ./...
