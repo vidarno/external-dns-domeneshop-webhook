@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"sort"
 
-	domeneshopProvider "github.com/vidarno/externaldns-domeneshop-webhook/internal/provider"
+	domeneshopProvider "github.com/vidarno/external-dns-domeneshop-webhook/internal/provider"
 )
 
 const (
