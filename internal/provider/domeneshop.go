@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	domeneshop "github.com/vidarno/external-dns-domeneshop-webhook/internal/client"
+
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 )

@@ -1,3 +1,4 @@
+
 module github.com/vidarno/external-dns-domeneshop-webhook
 
 go 1.21
