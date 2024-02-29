@@ -6,9 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	//"github.com/vidarno/externaldns-domeneshop-webhook"
+	"github.com/vidarno/external-dns-domeneshop-webhook/pkg/webhook"
 
-	"github.com/vidarno/externaldns-domeneshop-webhook/pkg/webhook"
 )
 
 func main() {

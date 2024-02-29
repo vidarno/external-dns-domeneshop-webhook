@@ -1,7 +1,7 @@
 package webhook
 
 /*
-   This package handles alle the routes and helper-functions used by them
+   This package handles all the routes and helper-functions used by them
 */
 import (
 	"encoding/json"
@@ -10,7 +10,8 @@ import (
 	"regexp"
 	"sort"
 
-	domeneshopProvider "github.com/vidarno/externaldns-domeneshop-webhook/internal/provider"
+	domeneshopProvider "github.com/vidarno/external-dns-domeneshop-webhook/internal/provider"
+
 )
 
 const (

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-      push-store-image:
+      push-image:
         runs-on: ubuntu-latest
         defaults:
           run:
@@ -26,5 +26,5 @@ jobs:
 
           - name: 'Build Inventory Image'
             run: |
-              docker build . --tag ghcr.io/${{ github.actor }}/externaldns-domeneshop-webhook:latest
-              docker push ghcr.io/${{ github.actor }}/externaldns-domeneshop-webhook:latest
+              docker build . --tag ghcr.io/${{ github.actor }}/external-dns-domeneshop-webhook:latest
+              docker push ghcr.io/${{ github.actor }}/external-dns-domeneshop-webhook:latest

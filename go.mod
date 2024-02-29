@@ -1,10 +1,11 @@
-module github.com/vidarno/externaldns-domeneshop-webhook
+
+module github.com/vidarno/external-dns-domeneshop-webhook
 
 go 1.21
 
 toolchain go1.22.0
 
-replace github.com/vidarno/externaldns-domeneshop-webhook => ./externaldns-domeneshop-webhook
+replace github.com/vidarno/external-dns-domeneshop-webhook => ./external-dns-domeneshop-webhook
 
 require sigs.k8s.io/external-dns v0.14.0
 

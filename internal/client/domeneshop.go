@@ -76,7 +76,7 @@ func (c *Client) Request(method string, endpoint string, reqBody []byte, v inter
 
 	versionInfo := version
 
-	req.Header.Set("User-Agent", fmt.Sprintf("externaldns-domeneshop-webhook/v"+versionInfo))
+	req.Header.Set("User-Agent", fmt.Sprintf("external-dns-domeneshop-webhook/v"+versionInfo))
 
 	resp, err := c.http.Do(req)
 	if err != nil {
