@@ -47,8 +47,6 @@ func (p *Provider) ApplyChanges(body io.ReadCloser) (error string) {
 	fmt.Printf("requesting apply changes, create: %d , updateOld: %d, updateNew: %d, delete: %d",
 		len(changes.Create), len(changes.UpdateOld), len(changes.UpdateNew), len(changes.Delete))
 
-	fmt.Println("Changes")
-
 	// TODO: Support dry-run
 	// Log total requested and total processed to debug failures more easily
 
