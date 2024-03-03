@@ -10,6 +10,7 @@ provider: webhook
 
 extraArgs:
   webhook-provider-url: http://localhost:8888
+  txt-prefix: external-dns
 
 sidecars:
   - name: external-dns-domeneshop-webhook

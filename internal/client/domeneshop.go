@@ -61,9 +61,178 @@ func NewClient(apiToken, apiSecret string) *Client {
 	return &client
 }
 
-// Request makes a request against the API with an optional body, and makes sure
+// GetDomainByName fetches the domain list and returns the Domain object
+// for the matching domain.
+func (c *Client) GetDomainByName(domain string) (*Domain, error) {
+	var domains []Domain
+
+	err := c.request("GET", "domains", nil, &domains)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, d := range domains {
+		if !d.Services.DNS {
+			// Domains without DNS service cannot have DNS record added
+			continue
+		}
+		if d.Name == domain {
+			return &d, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find matching domain name: %s", domain)
+}
+
+// getDNSRecordByHostDataType finds the first matching DNS record with the provided host, data and type
+func (c *Client) getDNSRecordByHostDataType(domain Domain, host string, data string, recordTtype string) (*DNSRecord, error) {
+	var records []DNSRecord
+
+	err := c.request("GET", fmt.Sprintf("domains/%d/dns", domain.ID), nil, &records)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range records {
+		if r.Host == host && r.Data == data && r.Type == recordTtype {
+			return &r, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find record with host %s for domain %s", host, domain.Name)
+
+}
+
+// GetDomains fetches the domain list and returns the Domain object
+// for the matching domain.
+func (c *Client) GetDomains() ([]Domain, error) {
+	var domains []Domain
+	domains_list := make([]Domain, 0)
+
+	err := c.request("GET", "domains", nil, &domains)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, d := range domains {
+		if !d.Services.DNS {
+			// Domains without DNS service cannot have DNS record added
+			continue
+		}
+		domains_list = append(domains_list, d)
+	}
+	if len(domains_list) > 0 {
+		return domains_list, nil
+	}
+
+	return nil, fmt.Errorf("failed to find domains")
+}
+
+// GetRecords fetches the records for the specified domain
+func (c *Client) GetRecords(domainId int) ([]DNSRecord, error) {
+	var records []DNSRecord
+	endpoint := "domains/" + strconv.Itoa(domainId) + "/dns"
+
+	err := c.request("GET", endpoint, nil, &records)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) > 0 {
+		return records, nil
+	}
+
+	return nil, fmt.Errorf("failed to find records for specified domain")
+}
+
+func (c *Client) CreateRecord(domainZone string, record DNSRecord) bool {
+	var err error
+	domain, err := c.GetDomainByName(domainZone)
+	if err != nil {
+		return false
+	}
+	switch record.Type {
+	case "A", "AAAA", "CNAME", "TXT":
+		err = c.createSimpleRecord(domain, record)
+	case "MX":
+		err = c.createMXRecord(domain, record)
+	default:
+		// We can't handle other types at the moment
+		return false
+	}
+
+	return err == nil
+
+}
+
+// DeleteRecord deletes the DNS record matching the provided host and data
+func (c *Client) DeleteRecord(domainZone string, dnsRecord DNSRecord) error {
+
+	domain, err := c.GetDomainByName(domainZone)
+	if err != nil {
+		return fmt.Errorf("failed to find domain with name %s", domainZone)
+	}
+
+	host := dnsRecord.Host
+	data := dnsRecord.Data
+	recordType := dnsRecord.Type
+	var record *DNSRecord
+
+	switch recordType {
+	case "A", "AAAA", "CNAME", "TXT":
+		record, err = c.getDNSRecordByHostDataType(*domain, host, data, recordType)
+		if err != nil {
+			return fmt.Errorf("failed to find record with data %s", data)
+		}
+	case "MX":
+		// TODO: We can handle this
+		return fmt.Errorf("we currently don't support MX-records")
+	default:
+		// We can't handle other types at the moment
+		return fmt.Errorf("unsupported recordType")
+	}
+
+	return c.request("DELETE", fmt.Sprintf("domains/%d/dns/%d", domain.ID, record.ID), nil, nil)
+}
+
+// UpdateRecord updates the record matching oldDnsRecord with values from newDnsRecord
+func (c *Client) UpdateRecord(domainZone string, oldDnsRecord, newDnsRecord DNSRecord) bool {
+
+	domain, err := c.GetDomainByName(domainZone)
+	if err != nil {
+		// failed to find domain with name domainZone
+		return false
+	}
+
+	recordType := oldDnsRecord.Type
+
+	switch recordType {
+	case "A", "AAAA", "CNAME", "TXT":
+		record, err := c.getDNSRecordByHostDataType(*domain, oldDnsRecord.Host, oldDnsRecord.Data, recordType)
+		if err != nil {
+			// failed to find record with data oldDnsRecord.Data
+			return false
+		}
+		err = c.updateSimpleRecord(domain, record, newDnsRecord)
+		if err != nil {
+			// failed to update record with data newDnsRecord.Data
+			return false
+		}
+
+	case "MX":
+		// TODO: We can handle this in the future, but not yet
+		return false
+	default:
+		// We can't handle other types at the moment
+		return false
+	}
+
+	return true
+}
+
+// request makes a request against the API with an optional body, and makes sure
 // that the required Authorization header is set using `setBasicAuth`
-func (c *Client) Request(method string, endpoint string, reqBody []byte, v interface{}) error {
+func (c *Client) request(method string, endpoint string, reqBody []byte, v interface{}) error {
 
 	var buf = bytes.NewBuffer(reqBody)
 
@@ -98,110 +267,6 @@ func (c *Client) Request(method string, endpoint string, reqBody []byte, v inter
 	return nil
 }
 
-// GetDomainByName fetches the domain list and returns the Domain object
-// for the matching domain.
-func (c *Client) GetDomainByName(domain string) (*Domain, error) {
-	var domains []Domain
-
-	err := c.Request("GET", "domains", nil, &domains)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, d := range domains {
-		if !d.Services.DNS {
-			// Domains without DNS service cannot have DNS record added
-			continue
-		}
-		if d.Name == domain {
-			return &d, nil
-		}
-	}
-
-	return nil, fmt.Errorf("failed to find matching domain name: %s", domain)
-}
-
-// GetDNSRecordByHostData finds the first matching DNS record with the provided host and data.
-func (c *Client) GetDNSRecordByHostData(domain Domain, host string, data string) (*DNSRecord, error) {
-	var records []DNSRecord
-
-	err := c.Request("GET", fmt.Sprintf("domains/%d/dns", domain.ID), nil, &records)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, r := range records {
-		if r.Host == host && r.Data == data {
-			return &r, nil
-		}
-	}
-
-	return nil, fmt.Errorf("failed to find record with host %s for domain %s", host, domain.Name)
-
-}
-
-// GetDomains fetches the domain list and returns the Domain object
-// for the matching domain.
-func (c *Client) GetDomains() ([]Domain, error) {
-	var domains []Domain
-	domains_list := make([]Domain, 0)
-
-	err := c.Request("GET", "domains", nil, &domains)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, d := range domains {
-		if !d.Services.DNS {
-			// Domains without DNS service cannot have DNS record added
-			continue
-		}
-		domains_list = append(domains_list, d)
-	}
-	if len(domains_list) > 0 {
-		return domains_list, nil
-	}
-
-	return nil, fmt.Errorf("failed to find domains")
-}
-
-// GetRecords fetches the records for the specified domain
-func (c *Client) GetRecords(domainId int) ([]DNSRecord, error) {
-	var records []DNSRecord
-	endpoint := "domains/" + strconv.Itoa(domainId) + "/dns"
-
-	err := c.Request("GET", endpoint, nil, &records)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(records) > 0 {
-		return records, nil
-	}
-
-	return nil, fmt.Errorf("failed to find records for specified domain")
-}
-
-func (c *Client) CreateRecord(domainZone string, record DNSRecord) bool {
-	var err error
-	domain, err := c.GetDomainByName(domainZone)
-	if err != nil {
-		return false
-	}
-	switch record.Type {
-	case "A", "AAAA", "CNAME", "TXT":
-		err = c.createSimpleRecord(domain, record)
-	case "MX":
-		err = c.createMXRecord(domain, record)
-	default:
-		// We can't handle other types at the moment
-		return false
-	}
-
-	return err == nil
-
-}
-
 func (c *Client) createSimpleRecord(domain *Domain, record DNSRecord) error {
 
 	jsonRecord, err := json.Marshal(DNSRecord{
@@ -215,7 +280,7 @@ func (c *Client) createSimpleRecord(domain *Domain, record DNSRecord) error {
 		return err
 	}
 
-	return c.Request("POST", fmt.Sprintf("domains/%d/dns", domain.ID), jsonRecord, nil)
+	return c.request("POST", fmt.Sprintf("domains/%d/dns", domain.ID), jsonRecord, nil)
 }
 
 func (c *Client) createMXRecord(domain *Domain, record DNSRecord) error {
@@ -232,16 +297,21 @@ func (c *Client) createMXRecord(domain *Domain, record DNSRecord) error {
 		return err
 	}
 
-	return c.Request("POST", fmt.Sprintf("domains/%d/dns", domain.ID), jsonRecord, nil)
+	return c.request("POST", fmt.Sprintf("domains/%d/dns", domain.ID), jsonRecord, nil)
 }
 
-// DeleteRecord deletes the DNS record matching the provided host and data
-func (c *Client) deleteRecord(domain *Domain, host string, data string) error {
+func (c *Client) updateSimpleRecord(domain *Domain, oldRecord *DNSRecord, newRecord DNSRecord) error {
 
-	record, err := c.GetDNSRecordByHostData(*domain, host, data)
+	jsonRecord, err := json.Marshal(DNSRecord{
+		Data: newRecord.Data,
+		Host: newRecord.Host,
+		TTL:  newRecord.TTL,
+		Type: newRecord.Type,
+	})
+
 	if err != nil {
 		return err
 	}
 
-	return c.Request("DELETE", fmt.Sprintf("domains/%d/dns/%d", domain.ID, record.ID), nil, nil)
+	return c.request("PUT", fmt.Sprintf("domains/%d/dns/%d", domain.ID, oldRecord.ID), jsonRecord, nil)
 }

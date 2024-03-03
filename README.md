@@ -13,7 +13,11 @@ kubectl create secret generic external-dns-domeneshop-webhook \
 
 Install external-dns and use values-file to configure domeneshop-webhook as sidecar:
 
-helm upgrade my-release oci://registry-1.docker.io/bitnamicharts/external-dns -f external-dns-domeneshop-webhook-values.yaml 
+helm install external-dns oci://registry-1.docker.io/bitnamicharts/external-dns -f external-dns-domeneshop-webhook-values.yaml
+
+If you want external-dns to also allow deletion of records add --set policy=sync:
+
+helm install external-dns oci://registry-1.docker.io/bitnamicharts/external-dns -f external-dns-domeneshop-webhook-values.yaml --set policy=sync
 
 # Domeneshop API
 

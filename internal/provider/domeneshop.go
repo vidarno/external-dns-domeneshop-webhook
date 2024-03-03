@@ -47,8 +47,6 @@ func (p *Provider) ApplyChanges(body io.ReadCloser) (error string) {
 	fmt.Printf("requesting apply changes, create: %d , updateOld: %d, updateNew: %d, delete: %d",
 		len(changes.Create), len(changes.UpdateOld), len(changes.UpdateNew), len(changes.Delete))
 
-	fmt.Println("Changes")
-
 	// TODO: Support dry-run
 	// Log total requested and total processed to debug failures more easily
 
@@ -69,6 +67,64 @@ func (p *Provider) ApplyChanges(body io.ReadCloser) (error string) {
 			// Call appropriate Domeneshop-function
 			ok := p.domeneshopClient.CreateRecord(domainZone, dnsRecord)
 			if !ok {
+				return "StatusInternalServerError"
+			}
+
+		}
+
+	}
+
+	for changeIndex, record := range changes.UpdateNew {
+
+		oldRecord := changes.UpdateOld[changeIndex]
+		if isSameEndpoint(record, oldRecord) {
+			// Do nothing if there is no actual change
+			continue
+		}
+
+		// Is the domain valid ?
+		domainZone, ok := getDomainZone(p.domeneshopClient, record.DNSName)
+		if !ok {
+			fmt.Printf("Could not find appropriate domain, skip this record")
+			continue
+		}
+
+		// Loop over all targets
+		for targetIndex, target := range record.Targets {
+
+			oldTarget := oldRecord.Targets[targetIndex]
+
+			// Convert to Domeneshop Domain-structs
+			oldDnsRecord := endpointToDnsRecord(domainZone, oldRecord, oldTarget)
+			newDnsRecord := endpointToDnsRecord(domainZone, record, target)
+
+			// Call appropriate Domeneshop-function
+			ok := p.domeneshopClient.UpdateRecord(domainZone, oldDnsRecord, newDnsRecord)
+			if !ok {
+				return "StatusInternalServerError"
+			}
+
+		}
+
+	}
+
+	for _, record := range changes.Delete {
+		// Is the domain valid ?
+		domainZone, ok := getDomainZone(p.domeneshopClient, record.DNSName)
+		if !ok {
+			fmt.Printf("Could not find appropriate domain, skip this record")
+			continue
+		}
+
+		// Loop over all targets
+		for _, target := range record.Targets {
+
+			// Convert to Domeneshop Domain-struct
+			dnsRecord := endpointToDnsRecord(domainZone, record, target)
+
+			// Call appropriate Domeneshop-function
+			err := p.domeneshopClient.DeleteRecord(domainZone, dnsRecord)
+			if err != nil {
 				return "StatusInternalServerError"
 			}
 
@@ -152,4 +208,8 @@ func endpointToDnsRecord(domainZone string, record *endpoint.Endpoint, target st
 
 	return domain
 
+}
+
+func isSameEndpoint(a *endpoint.Endpoint, b *endpoint.Endpoint) bool {
+	return a.DNSName == b.DNSName && a.RecordType == b.RecordType && a.RecordTTL == b.RecordTTL && a.Targets.Same(b.Targets)
 }
