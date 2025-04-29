@@ -31,6 +31,6 @@ COPY --from=builder /app /app
 
 EXPOSE 8888
 
-USER nonroot:nonroot
+USER 65532:65532
 
 ENTRYPOINT ["./app"]
