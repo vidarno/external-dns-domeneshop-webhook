@@ -24,12 +24,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 #RUN go test -cover -v ./...
 
 # Stage 2 (to create a downsized "container executable", ~5MB)
-FROM gcr.io/distroless/base-debian11 AS build-release-stage
+FROM gcr.io/distroless/base-debian12 AS build-release-stage
 
 WORKDIR /
 COPY --from=builder /app /app
 
-EXPOSE 8888
+EXPOSE 8080
 
 USER 65532:65532
 
