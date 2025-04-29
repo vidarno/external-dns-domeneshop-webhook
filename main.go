@@ -35,7 +35,7 @@ func main() {
     	})
 
 	// Start the main server on port 8888
-    go func() {
+  go func() {
 		fmt.Println("Server is listening on port 8888...")
 		log.Fatal(http.ListenAndServe("localhost:8888", mainMux))
 	}()
@@ -43,5 +43,6 @@ func main() {
 	// Start the health check server on port 8080
     fmt.Println("Health check server is listening on port 8080...")
     log.Fatal(http.ListenAndServe(":8080", healthMux))
+
 
 }
