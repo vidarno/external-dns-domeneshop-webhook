@@ -29,7 +29,7 @@ FROM gcr.io/distroless/base-debian12 AS build-release-stage
 WORKDIR /
 COPY --from=builder /app /app
 
-EXPOSE 8080
+EXPOSE 8888
 
 USER 65532:65532
 

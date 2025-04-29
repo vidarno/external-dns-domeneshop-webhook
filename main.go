@@ -17,13 +17,15 @@ func main() {
 
 	webhook := webhook.New(apiToken, apiSecret)
 
-	// Set up the server to listen on port 8888 and use the handler
-	http.HandleFunc("/", webhook.DomainFilter)
-	http.HandleFunc("/records", webhook.Records)
-	http.HandleFunc("/adjustendpoints", webhook.AdjustEndpoints)
+	// Main server for the webhook
+    mainMux := http.NewServeMux()
+	mainMux.HandleFunc("/", webhook.DomainFilter)
+	mainMux.HandleFunc("/records", webhook.Records)
+	mainMux.HandleFunc("/adjustendpoints", webhook.AdjustEndpoints)
 
-	// Add the /healthz endpoint
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	// Health check server
+    healthMux := http.NewServeMux()
+	healthMux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 	            w.WriteHeader(http.StatusMethodNotAllowed)
 	            return
@@ -32,7 +34,14 @@ func main() {
         	w.Write([]byte("OK"))
     	})
 
-	fmt.Println("Server is listening on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Start the main server on port 8888
+    go func() {
+		fmt.Println("Server is listening on port 8888...")
+		log.Fatal(http.ListenAndServe("localhost:8888", mainMux))
+	}()
+
+	// Start the health check server on port 8080
+    fmt.Println("Health check server is listening on port 8080...")
+    log.Fatal(http.ListenAndServe(":8080", healthMux))
 
 }
