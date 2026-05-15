@@ -89,21 +89,38 @@ func (p *Provider) ApplyChanges(body io.ReadCloser) (error string) {
 			continue
 		}
 
-		// Loop over all targets
-		for targetIndex, target := range record.Targets {
+		oldTargets := make(map[string]bool, len(oldRecord.Targets))
+		for _, t := range oldRecord.Targets {
+			oldTargets[t] = true
+		}
+		newTargets := make(map[string]bool, len(record.Targets))
+		for _, t := range record.Targets {
+			newTargets[t] = true
+		}
 
-			oldTarget := oldRecord.Targets[targetIndex]
-
-			// Convert to Domeneshop Domain-structs
-			oldDnsRecord := endpointToDnsRecord(domainZone, oldRecord, oldTarget)
-			newDnsRecord := endpointToDnsRecord(domainZone, record, target)
-
-			// Call appropriate Domeneshop-function
-			ok := p.domeneshopClient.UpdateRecord(domainZone, oldDnsRecord, newDnsRecord)
-			if !ok {
+		for _, t := range oldRecord.Targets {
+			if newTargets[t] {
+				continue
+			}
+			if err := p.domeneshopClient.DeleteRecord(domainZone, endpointToDnsRecord(domainZone, oldRecord, t)); err != nil {
 				return "StatusInternalServerError"
 			}
-
+		}
+		for _, t := range record.Targets {
+			newR := endpointToDnsRecord(domainZone, record, t)
+			if !oldTargets[t] {
+				if !p.domeneshopClient.CreateRecord(domainZone, newR) {
+					return "StatusInternalServerError"
+				}
+				continue
+			}
+			oldR := endpointToDnsRecord(domainZone, oldRecord, t)
+			if oldR == newR {
+				continue
+			}
+			if !p.domeneshopClient.UpdateRecord(domainZone, oldR, newR) {
+				return "StatusInternalServerError"
+			}
 		}
 
 	}
