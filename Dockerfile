@@ -4,7 +4,7 @@
 # (https://docs.docker.com/build/building/multi-stage/)
 
 # Stage 1 (to create a "build" image, ~850MB)
-FROM golang:1.22.0 AS builder
+FROM golang:1.26.1 AS builder
 LABEL org.opencontainers.image.source="https://github.com/vidarno/external-dns-domeneshop-webhook"
 
 WORKDIR /src/
