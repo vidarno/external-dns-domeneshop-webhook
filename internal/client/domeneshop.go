@@ -9,7 +9,8 @@ import (
 	"strconv"
 )
 
-const apiURL string = "https://api.domeneshop.no/v0"
+var apiURL = "https://api.domeneshop.no/v0"
+
 const version string = "0.0.1"
 
 // This code was based on the cert-manager-webhook-domeneshop made by Domeneshop
@@ -107,7 +108,7 @@ func (c *Client) getDNSRecordByHostDataType(domain Domain, host string, data str
 // for the matching domain.
 func (c *Client) GetDomains() ([]Domain, error) {
 	var domains []Domain
-	domains_list := make([]Domain, 0)
+	domainsList := make([]Domain, 0)
 
 	err := c.request("GET", "domains", nil, &domains)
 	if err != nil {
@@ -119,13 +120,10 @@ func (c *Client) GetDomains() ([]Domain, error) {
 			// Domains without DNS service cannot have DNS record added
 			continue
 		}
-		domains_list = append(domains_list, d)
-	}
-	if len(domains_list) > 0 {
-		return domains_list, nil
+		domainsList = append(domainsList, d)
 	}
 
-	return nil, fmt.Errorf("failed to find domains")
+	return domainsList, nil
 }
 
 // GetRecords fetches the records for the specified domain
@@ -138,11 +136,7 @@ func (c *Client) GetRecords(domainId int) ([]DNSRecord, error) {
 		return nil, err
 	}
 
-	if len(records) > 0 {
-		return records, nil
-	}
-
-	return nil, fmt.Errorf("failed to find records for specified domain")
+	return records, nil
 }
 
 func (c *Client) CreateRecord(domainZone string, record DNSRecord) bool {
@@ -245,7 +239,7 @@ func (c *Client) request(method string, endpoint string, reqBody []byte, v inter
 
 	versionInfo := version
 
-	req.Header.Set("User-Agent", fmt.Sprintf("external-dns-domeneshop-webhook/v"+versionInfo))
+	req.Header.Set("User-Agent", fmt.Sprintf("external-dns-domeneshop-webhook/%s", versionInfo))
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -262,7 +256,7 @@ func (c *Client) request(method string, endpoint string, reqBody []byte, v inter
 	}
 
 	if v != nil {
-		return json.Unmarshal(respBody, &v)
+		return json.Unmarshal(respBody, v)
 	}
 	return nil
 }

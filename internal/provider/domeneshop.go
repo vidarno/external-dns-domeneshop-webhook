@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	domeneshop "github.com/vidarno/external-dns-domeneshop-webhook/internal/client"
@@ -153,26 +152,27 @@ func (p *Provider) ApplyChanges(body io.ReadCloser) (error string) {
 
 }
 
-func (p *Provider) Records() []*endpoint.Endpoint {
+func (p *Provider) Records() ([]*endpoint.Endpoint, error) {
 
 	endpoints := make([]*endpoint.Endpoint, 0)
 
 	// Get all domains
 	domains, err := p.domeneshopClient.GetDomains()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	// Get all records for each domain
 	for _, domain := range domains {
 		records, err := p.domeneshopClient.GetRecords(domain.ID)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return nil, err
 		}
 		for _, record := range records {
-			fqdn := record.Host + "." + domain.Name
+			fqdn := domain.Name
+			if record.Host != "" {
+				fqdn = record.Host + "." + domain.Name
+			}
 			endpoints = append(endpoints, endpoint.NewEndpointWithTTL(fqdn, record.Type, endpoint.TTL(record.TTL), record.Data))
 
 		}
@@ -180,7 +180,7 @@ func (p *Provider) Records() []*endpoint.Endpoint {
 	}
 	// TODO: use SupportedRecordType in provider-package for external-dns to filter records
 
-	return endpoints
+	return endpoints, nil
 }
 
 func getDomainZone(client *domeneshop.Client, DNSName string) (string, bool) {
