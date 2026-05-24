@@ -26,19 +26,26 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine publish tag
         id: publish-tag
         shell: bash
         run: |
           if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            echo "tag=latest" >> "$GITHUB_OUTPUT"
+            tag="latest"
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            tag="${GITHUB_REF#refs/tags/}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            tag="$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+            if [[ -z "${tag}" ]]; then
+              tag="manual"
+            fi
           else
-            echo "tag=latest" >> "$GITHUB_OUTPUT"
+            tag="latest"
           fi
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         shell: bash
