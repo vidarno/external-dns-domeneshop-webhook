@@ -6,6 +6,7 @@
 # Stage 1 (to create a "build" image, ~850MB)
 FROM golang:1.22.0 AS builder
 LABEL org.opencontainers.image.source="https://github.com/vidarno/external-dns-domeneshop-webhook"
+ARG TARGETARCH
 
 WORKDIR /src/
 COPY go.mod go.sum ./
@@ -14,7 +15,7 @@ RUN go mod download
 
 COPY ./ ./
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build \
     -trimpath \
     -ldflags="-w -s" \
