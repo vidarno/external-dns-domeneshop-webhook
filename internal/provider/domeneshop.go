@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	domeneshop "github.com/vidarno/external-dns-domeneshop-webhook/internal/client"
@@ -161,7 +160,7 @@ func (p *Provider) Records() []*endpoint.Endpoint {
 	domains, err := p.domeneshopClient.GetDomains()
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return endpoints
 	}
 
 	// Get all records for each domain
@@ -169,7 +168,7 @@ func (p *Provider) Records() []*endpoint.Endpoint {
 		records, err := p.domeneshopClient.GetRecords(domain.ID)
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			continue
 		}
 		for _, record := range records {
 			fqdn := record.Host + "." + domain.Name
