@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const apiURL string = "https://api.domeneshop.no/v0"
@@ -55,7 +56,9 @@ func NewClient(apiToken, apiSecret string) *Client {
 	client := Client{
 		APIToken:  apiToken,
 		APISecret: apiSecret,
-		http:      http.Client{},
+		http: http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 
 	return &client
