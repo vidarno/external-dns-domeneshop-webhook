@@ -1,7 +1,7 @@
 image:
   registry: registry.k8s.io
   repository: external-dns/external-dns
-  tag: v0.14.0
+  tag: v0.21.0
 
 # restrict to namespace
 # namespace: external-dns 
@@ -43,3 +43,12 @@ sidecars:
           secretKeyRef:
             name: external-dns-domeneshop-webhook
             key: SECRET
+      # Optional domain filtering for the webhook response.
+      # - name: DOMAIN_FILTER_INCLUDE
+      #   value: example.com,example.org
+      # - name: DOMAIN_FILTER_EXCLUDE
+      #   value: internal.example.com
+      # - name: DOMAIN_FILTER_REGEX_INCLUDE
+      #   value: '.*\\.example\\.com$'
+      # - name: DOMAIN_FILTER_REGEX_EXCLUDE
+      #   value: '^.*-internal\\.example\\.com$'

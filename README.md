@@ -19,6 +19,24 @@ If you want external-dns to also allow deletion of records add --set policy=sync
 
 helm install external-dns oci://registry-1.docker.io/bitnamicharts/external-dns -f external-dns-domeneshop-webhook-values.yaml --set policy=sync
 
+This repository targets `external-dns` `v0.21.0` and the webhook reads optional domain-filter configuration from environment variables. The following variables are supported:
+
+- `DOMAIN_FILTER` or `DOMAIN_FILTER_INCLUDE`: comma-separated allowlist of domains
+- `DOMAIN_FILTER_EXCLUDE`: comma-separated denylist of domains
+- `DOMAIN_FILTER_REGEX_INCLUDE`: regex used to include matching domains
+- `DOMAIN_FILTER_REGEX_EXCLUDE`: regex used to exclude matching domains
+
+Example values for the sidecar environment:
+
+```yaml
+env:
+  - name: DOMAIN_FILTER_INCLUDE
+    value: example.com,example.org
+  - name: DOMAIN_FILTER_EXCLUDE
+    value: internal.example.com
+  - name: DOMAIN_FILTER_REGEX_INCLUDE
+    value: '.*\\.example\\.com$'
+```
 
 # Domeneshop API
 
