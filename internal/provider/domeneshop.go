@@ -25,6 +25,11 @@ func NewProvider(apiToken, apiSecret string) *Provider {
 	return &provider
 }
 
+// NewProviderWithClient creates a provider using an existing Domeneshop client
+func NewProviderWithClient(client *domeneshop.Client) *Provider {
+	return &Provider{domeneshopClient: client}
+}
+
 func (p *Provider) AdjustEndpoints(body io.ReadCloser) ([]byte, error) {
 	var pve []*endpoint.Endpoint
 	if err := json.NewDecoder(body).Decode(&pve); err != nil {

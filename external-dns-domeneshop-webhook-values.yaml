@@ -1,7 +1,7 @@
 image:
   registry: registry.k8s.io
   repository: external-dns/external-dns
-  tag: v0.14.0
+  tag: v0.24.0
 
 # restrict to namespace
 # namespace: external-dns 
@@ -14,20 +14,22 @@ extraArgs:
 
 sidecars:
   - name: external-dns-domeneshop-webhook
-    image: dummy:latest
+    image: ghcr.io/vidarno/external-dns-domeneshop-webhook:latest
     ports:
       - containerPort: 8888
         name: http
+      - containerPort: 8080
+        name: healthz
     # livenessProbe:
     #   httpGet:
-    #     path: /health
-    #     port: http
+    #     path: /healthz
+    #     port: healthz
     #   initialDelaySeconds: 10
     #   timeoutSeconds: 5
     # readinessProbe:
     #   httpGet:
-    #     path: /health
-    #     port: http
+    #     path: /healthz
+    #     port: healthz
     #   initialDelaySeconds: 10
     #   timeoutSeconds: 5
     env:
