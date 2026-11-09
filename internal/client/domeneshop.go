@@ -19,6 +19,7 @@ const version string = "0.0.1"
 type Client struct {
 	APIToken  string
 	APISecret string
+	BaseURL   string
 	http      http.Client
 }
 
@@ -55,6 +56,7 @@ func NewClient(apiToken, apiSecret string) *Client {
 	client := Client{
 		APIToken:  apiToken,
 		APISecret: apiSecret,
+		BaseURL:   apiURL,
 		http:      http.Client{},
 	}
 
@@ -121,16 +123,14 @@ func (c *Client) GetDomains() ([]Domain, error) {
 		}
 		domains_list = append(domains_list, d)
 	}
-	if len(domains_list) > 0 {
-		return domains_list, nil
-	}
 
-	return nil, fmt.Errorf("failed to find domains")
+	return domains_list, nil
 }
 
-// GetRecords fetches the records for the specified domain
+// GetRecords fetches the records for the specified domain.
+// A domain without any records returns an empty slice and no error.
 func (c *Client) GetRecords(domainId int) ([]DNSRecord, error) {
-	var records []DNSRecord
+	records := make([]DNSRecord, 0)
 	endpoint := "domains/" + strconv.Itoa(domainId) + "/dns"
 
 	err := c.request("GET", endpoint, nil, &records)
@@ -138,11 +138,7 @@ func (c *Client) GetRecords(domainId int) ([]DNSRecord, error) {
 		return nil, err
 	}
 
-	if len(records) > 0 {
-		return records, nil
-	}
-
-	return nil, fmt.Errorf("failed to find records for specified domain")
+	return records, nil
 }
 
 func (c *Client) CreateRecord(domainZone string, record DNSRecord) bool {
@@ -236,7 +232,7 @@ func (c *Client) request(method string, endpoint string, reqBody []byte, v inter
 
 	var buf = bytes.NewBuffer(reqBody)
 
-	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", apiURL, endpoint), buf)
+	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", c.BaseURL, endpoint), buf)
 	if err != nil {
 		return err
 	}

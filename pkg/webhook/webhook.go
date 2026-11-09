@@ -39,7 +39,8 @@ func (p *Webhook) AdjustEndpoints(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Received %s request for %s\n", r.Method, r.URL.Path)
 	if r.Method != "POST" {
 		fmt.Println("Unsupported method")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
 
 	// TODO: contentTypeHeaderCheck, acceptHeaderCheck
@@ -84,11 +85,16 @@ func (p *Webhook) Records(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	records := p.provider.Records()
+	records, err := p.provider.Records()
+	if err != nil {
+		fmt.Printf("failed to get records: %v\n", err)
+		w.Header().Set(contentTypeHeader, contentTypePlaintext)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set(contentTypeHeader, string(mediaTypeFormat+"version="+"1"))
 	w.Header().Set(varyHeader, contentTypeHeader)
-	err := json.NewEncoder(w).Encode(records)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(records); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

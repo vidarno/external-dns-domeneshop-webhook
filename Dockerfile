@@ -20,8 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     -ldflags="-w -s" \
     -o /app
 
-#Commented-out until tests are ready..
-#RUN go test -cover -v ./...
+RUN CGO_ENABLED=0 go test -cover ./...
 
 # Stage 2 (to create a downsized "container executable", ~5MB)
 FROM gcr.io/distroless/base-debian12 AS build-release-stage

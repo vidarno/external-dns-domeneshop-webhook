@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	domeneshop "github.com/vidarno/external-dns-domeneshop-webhook/internal/client"
@@ -153,60 +152,93 @@ func (p *Provider) ApplyChanges(body io.ReadCloser) (error string) {
 
 }
 
-func (p *Provider) Records() []*endpoint.Endpoint {
+// Records returns all records in all DNS-enabled domains on the account.
+// Records sharing name and type are grouped into a single endpoint with multiple targets.
+func (p *Provider) Records() ([]*endpoint.Endpoint, error) {
 
 	endpoints := make([]*endpoint.Endpoint, 0)
 
 	// Get all domains
 	domains, err := p.domeneshopClient.GetDomains()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to get domains: %w", err)
 	}
 
 	// Get all records for each domain
 	for _, domain := range domains {
 		records, err := p.domeneshopClient.GetRecords(domain.ID)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return nil, fmt.Errorf("failed to get records for domain %s: %w", domain.Name, err)
 		}
-		for _, record := range records {
-			fqdn := record.Host + "." + domain.Name
-			endpoints = append(endpoints, endpoint.NewEndpointWithTTL(fqdn, record.Type, endpoint.TTL(record.TTL), record.Data))
 
+		grouped := make(map[string]*endpoint.Endpoint)
+		for _, record := range records {
+			fqdn := hostToFQDN(record.Host, domain.Name)
+			key := fqdn + "|" + record.Type
+			if ep, ok := grouped[key]; ok {
+				ep.Targets = append(ep.Targets, record.Data)
+				continue
+			}
+			ep := endpoint.NewEndpointWithTTL(fqdn, record.Type, endpoint.TTL(record.TTL), record.Data)
+			grouped[key] = ep
+			endpoints = append(endpoints, ep)
 		}
 
 	}
 	// TODO: use SupportedRecordType in provider-package for external-dns to filter records
 
-	return endpoints
+	return endpoints, nil
 }
 
+// getDomainZone returns the name of the Domeneshop domain that DNSName belongs to.
+// If several domains match (e.g. example.com and sub.example.com), the longest one wins.
 func getDomainZone(client *domeneshop.Client, DNSName string) (string, bool) {
-	zone := DNSName
-	for {
-		parts := strings.Split(zone, ".")
-		if len(parts) < 2 {
-			// Didn't find a valid domain before reaching top-level-domain
-			break
-		}
-		// Re-assemble the domain part
-		domainPart := strings.Join(parts[1:], ".")
-		domain, err := client.GetDomainByName(domainPart)
-		if err != nil {
+	domains, err := client.GetDomains()
+	if err != nil {
+		fmt.Printf("failed to get domains: %v\n", err)
+		return "", false
+	}
+	return findDomainZone(domains, DNSName)
+}
+
+func findDomainZone(domains []domeneshop.Domain, DNSName string) (string, bool) {
+	name := strings.ToLower(strings.TrimSuffix(DNSName, "."))
+	best := ""
+	for _, d := range domains {
+		zone := strings.ToLower(strings.TrimSuffix(d.Name, "."))
+		if zone == "" {
 			continue
 		}
-		return domain.Name, true
-
+		if name == zone || strings.HasSuffix(name, "."+zone) {
+			if len(zone) > len(best) {
+				best = zone
+			}
+		}
 	}
-	// Failure
-	return "", false
+	return best, best != ""
+}
+
+// hostToFQDN converts a Domeneshop host ("@" for the apex) into a fully qualified name
+func hostToFQDN(host, domainZone string) string {
+	if host == "" || host == "@" {
+		return domainZone
+	}
+	return host + "." + domainZone
+}
+
+// fqdnToHost converts a fully qualified name into a Domeneshop host ("@" for the apex)
+func fqdnToHost(fqdn, domainZone string) string {
+	name := strings.ToLower(strings.TrimSuffix(fqdn, "."))
+	zone := strings.ToLower(strings.TrimSuffix(domainZone, "."))
+	if name == zone {
+		return "@"
+	}
+	return strings.TrimSuffix(name, "."+zone)
 }
 
 func endpointToDnsRecord(domainZone string, record *endpoint.Endpoint, target string) domeneshop.DNSRecord {
 	var ttl int
-	host := strings.Split(record.DNSName, "."+domainZone)[0]
+	host := fqdnToHost(record.DNSName, domainZone)
 	if int(record.RecordTTL) < 60 {
 		// Default in Domeneshop API is 3600
 		ttl = 3600
