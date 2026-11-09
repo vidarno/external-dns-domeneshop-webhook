@@ -34,6 +34,11 @@ func New(apiToken, apiSecret string) *Webhook {
 
 	return &webhook
 }
+
+// NewWithProvider creates a new instance of the Webhook using an existing provider
+func NewWithProvider(p *domeneshopProvider.Provider) *Webhook {
+	return &Webhook{provider: *p}
+}
 func (p *Webhook) AdjustEndpoints(w http.ResponseWriter, r *http.Request) {
 	// Log the request method and URL path
 	fmt.Printf("Received %s request for %s\n", r.Method, r.URL.Path)
